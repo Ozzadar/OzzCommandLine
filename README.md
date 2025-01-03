@@ -44,7 +44,7 @@ struct BaseCommand {
     }
 
     constexpr static const char* help_string = "This is the help string for base command zz";
-    constexpr static const char* command_string = "base";
+    constexpr static const char* command_string = "base b"; // <-- note you can specify multiple command names for this level by separating with space
 
 private:
     struct BaseSubcommand {

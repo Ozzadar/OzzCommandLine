@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <iostream>
+#include <sstream>
 
 namespace ozz::commands {
     template<typename T>
@@ -43,8 +44,15 @@ namespace ozz::commands {
                 return false;
             }
 
+            std::vector<std::string> commandTokens;
+            // tokenize command_string using space as delimiter
+            std::istringstream iss(CommandClass::command_string);
+            for (std::string token; std::getline(iss, token, ' ');) {
+                commandTokens.push_back(token);
+            }
+
             // if the first token is the command string, execute func with all remaining tokens
-            if (tokens[0] == CommandClass::command_string) {
+            if (std::find(commandTokens.begin(), commandTokens.end(), tokens[0]) != commandTokens.end()) {
                 // take a subarray of tokens starting from the second element
                 std::vector<std::string> subArguments(tokens.begin() + 1, tokens.end());
                 return CommandClass::ExecuteFunc(subArguments);
