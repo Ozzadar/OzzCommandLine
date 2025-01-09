@@ -95,8 +95,9 @@ namespace ozz::commands {
                 HelpFunction(0);
                 return true;
             }
-            for (const auto CommandClass: {Commands()...}) {
-                if (CommandClass.Execute(tokens)) {
+
+            for (const auto& result: {Commands::Execute(tokens)...}) {
+                if (result) {
                     return true;
                 }
             }
