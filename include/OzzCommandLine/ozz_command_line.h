@@ -93,7 +93,7 @@ namespace ozz::commands {
             return execute(tokens);
         }
 
-        static bool execute(std::vector<std::string> tokens) {
+        static bool execute(std::vector<std::string> tokens, const std::unordered_map<std::string, std::variant<std::string, bool>>& flags = {}) {
             if (tokens.empty()) {
                 return false;
             }
@@ -102,6 +102,9 @@ namespace ozz::commands {
                 HelpFunction(0);
                 return true;
             }
+
+            // if no flags are passed, parse them from the tokens.
+            bool bParseFlags = flags.empty();
 
             /**
              * Flags are stored in a vector of Flag structs
@@ -112,58 +115,60 @@ namespace ozz::commands {
              */
 
             // make a copy of the tokens
-            std::vector<std::string> commandTokens {};
-            std::unordered_map<std::string, std::variant<std::string, bool>> flags;
+            std::vector<std::string> commandTokens = bParseFlags ? std::vector<std::string>{} : std::vector<std::string>{tokens.begin(), tokens.end()};
+            std::unordered_map<std::string, std::variant<std::string, bool>> outFlags = bParseFlags ? std::unordered_map<std::string, std::variant<std::string, bool>>{} : flags;
 
-            std::string cachedKey {};
-            bool bNextTokenIsValue { false };
+            if (bParseFlags) {
+                std::string cachedKey {};
+                bool bNextTokenIsValue { false };
 
-            for (const auto& token : tokens) {
-                if (bNextTokenIsValue) {
-                    flags[cachedKey] = token;
-                    continue;
-                }
-
-                for (auto i = 0; i < token.size(); i++) {
-                    // first character is a flag
-                    if (i == 0) {
-                        if ('-' == token[i]) {
-                            continue;
-                        }
-                        // first character is not flag, so whole token is a command
-                        commandTokens.push_back(token);
-                        break;
+                for (const auto& token : tokens) {
+                    if (bNextTokenIsValue) {
+                        outFlags[cachedKey] = token;
+                        continue;
                     }
 
-                    if (i == 1) {
-                        // second character is a flag, so we're expecting a key=value to be the remainder of the token
-                        if ('-' == token[i]) {
-                            // split the remainder of the token by =
-                            auto split = token.find('=');
-                            if (split != std::string::npos) {
-                                auto key = token.substr(2, split - 2);
-                                auto value = token.substr(split + 1);
-                                flags[key] = value;
+                    for (auto i = 0; i < token.size(); i++) {
+                        // first character is a flag
+                        if (i == 0) {
+                            if ('-' == token[i]) {
+                                continue;
+                            }
+                            // first character is not flag, so whole token is a command
+                            commandTokens.push_back(token);
+                            break;
+                        }
+
+                        if (i == 1) {
+                            // second character is a flag, so we're expecting a key=value to be the remainder of the token
+                            if ('-' == token[i]) {
+                                // split the remainder of the token by =
+                                auto split = token.find('=');
+                                if (split != std::string::npos) {
+                                    auto key = token.substr(2, split - 2);
+                                    auto value = token.substr(split + 1);
+                                    outFlags[key] = value;
+                                    break;
+                                }
+                                // if no = is found, treat it as a boolean flag
+                                outFlags[token.substr(2)] = true;
                                 break;
                             }
-                            // if no = is found, treat it as a boolean flag
-                            flags[token.substr(2)] = true;
-                            break;
-                        }
 
-                        if (token[0] == '-') {
-                            cachedKey = token.substr(1);
-                            bNextTokenIsValue = true;
-                            break;
-                        }
-                        commandTokens.push_back(token);
+                            if (token[0] == '-') {
+                                cachedKey = token.substr(1);
+                                bNextTokenIsValue = true;
+                                break;
+                            }
+                            commandTokens.push_back(token);
 
+                        }
                     }
                 }
             }
 
             // separate flags from arguments
-            for (const auto& result: {Commands::Execute(commandTokens, flags)...}) {
+            for (const auto& result: {Commands::Execute(commandTokens, outFlags)...}) {
                 if (result) {
                     return true;
                 }
