@@ -8,73 +8,69 @@ It was built largely as an exercise to use templates to build out the commands a
 
 - [x] Commands / Subcommands
 - [x] Help
-- [ ] Flags
+- [x] Flags
 
 ## Usage
 
-Here is an example application that has a base command, and a subcommand:
+There is an example application provided in `examples/main.cpp` that demonstrates all major features.
+
+The gist:
+
+There are two types:
+
+1. OzzCommand
+2. OzzCommandList
+
+### OzzCommand
+
+You create OzzCommand structs in your code base. Similar to inheritance but templated because why not. 
+An OzzCommand requires an ExecuteFunc, an AdditionalHelp function, a help string and a command string.
 
 ```cpp
-#include <iostream>
-#include <OzzCommandLine/ozz_command_line.h>
-
-struct BaseCommand {
+struct Command {
     // delete all constructors
-    BaseCommand() = delete;
+    Command() = delete;
 
-    static bool ExecuteFunc(const std::vector<std::string>& tokens) {
-        if (tokens.empty()) {
-            return false;
-        }
+    static bool ExecuteFunc(const TokenListType &tokens, const FlagMapType &flags) {
+        std::cout << "subcommand\n";
 
-        if (CommandListType::execute(tokens)) {
-            return true;
+        // Print all flags
+        for (const auto &flag : flags) {
+            std::cout << flag.first << "\n";
         }
+        std::unordered_map<int, int> map;
+        map[0] = 1;
 
-        std::cout << "Tokens: ";
-        for (const auto &token : tokens) {
-            std::cout << token << " ";
-        }
-        std::cout << std::endl;
-        return false;
+        const auto param = std::get<std::string>(flags.at("paramname"));
+        std::cout << param << "\n";
+
+        return true;
     }
 
     static void AdditionalHelp(uint16_t indent) {
-        CommandListType::HelpFunction(indent);
     }
 
-    constexpr static const char* help_string = "This is the help string for base command zz";
-    constexpr static const char* command_string = "base b"; // <-- note you can specify multiple command names for this level by separating with space
-
-private:
-    struct BaseSubcommand {
-        BaseSubcommand() = delete;
-
-        static bool ExecuteFunc(const std::vector<std::string>& tokens) {
-            std::cout << "subcommand executed\n";
-            return true;
-        }
-
-        static void AdditionalHelp(uint16_t indent) {
-            std::cout << std::string(indent, ' ') << "Additional help for base subcommand" << std::endl;
-        }
-
-        constexpr static const char* help_string = "This is the help string for base subcommand";
-        constexpr static const char* command_string = "subcommand";
-    };
-
-    using CommandListType = OzzCommandList<
-                OzzCommand<BaseSubcommand>
-            >;
+    constexpr static const char *help_string = "This command does command things";
+    constexpr static const char *command_string = "command c"; // <-- note you can specify multiple command
 };
+```
 
-int main(int argc, char *argv[]) {
-    using CommandListType = OzzCommandList<
-                OzzCommand<BaseCommand>
-            >;
+The idea being that each command can be self contained.
 
-    if (!CommandListType::execute(argc, argv)) {
-        std::cout << "Command not found\n";
+### OzzCommandList
+
+In order to build your list of commands, you define a OzzCommandList type:
+
+```cpp
+using MyCommandList = OzzCommandList<Command, Command2>;
+```
+
+You can then execute your function from the top level of your application:
+
+```cpp
+int main (int argc, char** argv) {
+    if (!OzzCommandList<OzzCommand<Command>>::execute(argc, argv)) {
+        // command not found
     }
 }
 ```
