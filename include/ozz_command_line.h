@@ -10,6 +10,9 @@
 #include <variant>
 
 namespace ozz::commands {
+    using TokenListType = std::vector<std::string>;
+    using FlagMapType = std::unordered_map<std::string, std::variant<std::string, bool>>;
+
     struct Flag {
         std::string flag;
         std::variant<std::string, bool> value;
@@ -22,12 +25,12 @@ namespace ozz::commands {
 
     template<typename T>
     concept HasExecute = requires(T) {
-        { T::Execute } -> std::invocable<const std::vector<std::string> &, const std::unordered_map<std::string, std::variant<std::string, bool>>&>;
+        { T::Execute } -> std::invocable<const TokenListType&, const FlagMapType&>;
     };
 
     template<typename T>
     concept HasExecuteFunc = requires(T) {
-        { T::ExecuteFunc } -> std::invocable<const std::vector<std::string> &, const std::unordered_map<std::string, std::variant<std::string, bool>>&>;
+        { T::ExecuteFunc } -> std::invocable<const TokenListType&, const FlagMapType&>;
     };
 
     template<typename T>
@@ -46,7 +49,7 @@ namespace ozz::commands {
     public:
         Command() = default;
 
-        static bool Execute(const std::vector<std::string> &tokens, const std::unordered_map<std::string, std::variant<std::string, bool>>& flags = {}) {
+        static bool Execute(const TokenListType& tokens, const FlagMapType& flags = {}) {
             if (tokens.empty()) {
                 return false;
             }
@@ -93,7 +96,7 @@ namespace ozz::commands {
             return execute(tokens);
         }
 
-        static bool execute(std::vector<std::string> tokens, const std::unordered_map<std::string, std::variant<std::string, bool>>& flags = {}) {
+        static bool execute(const TokenListType& tokens, const FlagMapType& flags = {}) {
             if (tokens.empty()) {
                 return false;
             }
@@ -115,8 +118,8 @@ namespace ozz::commands {
              */
 
             // make a copy of the tokens
-            std::vector<std::string> commandTokens = bParseFlags ? std::vector<std::string>{} : std::vector<std::string>{tokens.begin(), tokens.end()};
-            std::unordered_map<std::string, std::variant<std::string, bool>> outFlags = bParseFlags ? std::unordered_map<std::string, std::variant<std::string, bool>>{} : flags;
+            TokenListType commandTokens = bParseFlags ? std::vector<std::string>{} : std::vector<std::string>{tokens.begin(), tokens.end()};
+            FlagMapType outFlags = bParseFlags ? std::unordered_map<std::string, std::variant<std::string, bool>>{} : flags;
 
             if (bParseFlags) {
                 std::string cachedKey {};
