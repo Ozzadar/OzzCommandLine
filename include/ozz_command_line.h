@@ -128,6 +128,8 @@ namespace ozz::commands {
                 for (const auto& token : tokens) {
                     if (bNextTokenIsValue) {
                         outFlags[cachedKey] = token;
+                        bNextTokenIsValue = false;
+                        cachedKey.clear();
                         continue;
                     }
 
