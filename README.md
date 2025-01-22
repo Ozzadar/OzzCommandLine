@@ -27,23 +27,17 @@ You create OzzCommand structs in your code base. Similar to inheritance but temp
 An OzzCommand requires an ExecuteFunc, an AdditionalHelp function, a help string and a command string.
 
 ```cpp
-struct Command {
+struct MainCommand {
+    using SubCommands = OzzCommandList<OzzCommand<SubCommand>>;
+
     // delete all constructors
-    Command() = delete;
+    MainCommand() = delete;
 
     static bool ExecuteFunc(const TokenListType &tokens, const FlagMapType &flags) {
-        std::cout << "subcommand\n";
-
-        // Print all flags
-        for (const auto &flag : flags) {
-            std::cout << flag.first << "\n";
+        std::cout << "command\n";
+        if (!SubCommands::execute(tokens, flags)) {
+            std::cout << "Invalid subcommand\n";
         }
-        std::unordered_map<int, int> map;
-        map[0] = 1;
-
-        const auto param = std::get<std::string>(flags.at("paramname"));
-        std::cout << param << "\n";
-
         return true;
     }
 
@@ -62,14 +56,14 @@ The idea being that each command can be self contained.
 In order to build your list of commands, you define a OzzCommandList type:
 
 ```cpp
-using MyCommandList = OzzCommandList<Command, Command2>;
+using MyCommandList = OzzCommandList<OzzCommand<MainCommand>, OzzCommand<Command2>>;
 ```
 
 You can then execute your function from the top level of your application:
 
 ```cpp
 int main (int argc, char** argv) {
-    if (!OzzCommandList<OzzCommand<Command>>::execute(argc, argv)) {
+    if (!OzzCommandList<OzzCommand<MainCommand>>::execute(argc, argv)) {
         // command not found
     }
 }
