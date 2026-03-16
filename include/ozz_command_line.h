@@ -3,11 +3,13 @@
 //
 #pragma once
 
+#include <algorithm>
 #include <vector>
 #include <unordered_map>
 #include <iostream>
 #include <sstream>
 #include <variant>
+#include <cstdint>
 
 namespace ozz::commands {
     using TokenListType = std::vector<std::string>;
@@ -62,7 +64,7 @@ namespace ozz::commands {
             }
 
             // if the first token is the command string, execute func with all remaining tokens
-            if (std::find(commandTokens.begin(), commandTokens.end(), tokens[0]) != commandTokens.end()) {
+            if (std::ranges::find(commandTokens, tokens[0]) != commandTokens.end()) {
                 // take a subarray of tokens starting from the second element
                 std::vector<std::string> subArguments(tokens.begin() + 1, tokens.end());
                 return CommandClass::ExecuteFunc(subArguments, flags);
