@@ -3,17 +3,17 @@
 //
 #pragma once
 
-#include <algorithm>
 #include <vector>
 #include <unordered_map>
 #include <iostream>
 #include <sstream>
 #include <variant>
-#include <cstdint>
+#include <utility>
 
 namespace ozz::commands {
-    using TokenListType = std::vector<std::string>;
-    using FlagMapType = std::unordered_map<std::string, std::variant<std::string, bool>>;
+
+    // {handled, exitCode} — handled=true means a command matched, exitCode is the process result
+    using CommandResult = std::pair<bool, int>;
 
     struct Flag {
         std::string flag;
@@ -27,12 +27,12 @@ namespace ozz::commands {
 
     template<typename T>
     concept HasExecute = requires(T) {
-        { T::Execute } -> std::invocable<const TokenListType&, const FlagMapType&>;
+        { T::Execute } -> std::invocable<const std::vector<std::string> &, const std::unordered_map<std::string, std::variant<std::string, bool>>&>;
     };
 
     template<typename T>
     concept HasExecuteFunc = requires(T) {
-        { T::ExecuteFunc } -> std::invocable<const TokenListType&, const FlagMapType&>;
+        { T::ExecuteFunc } -> std::invocable<const std::vector<std::string> &, const std::unordered_map<std::string, std::variant<std::string, bool>>&>;
     };
 
     template<typename T>
@@ -51,9 +51,9 @@ namespace ozz::commands {
     public:
         Command() = default;
 
-        static bool Execute(const TokenListType& tokens, const FlagMapType& flags = {}) {
+        static CommandResult Execute(const std::vector<std::string> &tokens, const std::unordered_map<std::string, std::variant<std::string, bool>>& flags = {}) {
             if (tokens.empty()) {
-                return false;
+                return {false, 0};
             }
 
             std::vector<std::string> commandTokens;
@@ -64,12 +64,12 @@ namespace ozz::commands {
             }
 
             // if the first token is the command string, execute func with all remaining tokens
-            if (std::ranges::find(commandTokens, tokens[0]) != commandTokens.end()) {
+            if (std::find(commandTokens.begin(), commandTokens.end(), tokens[0]) != commandTokens.end()) {
                 // take a subarray of tokens starting from the second element
                 std::vector<std::string> subArguments(tokens.begin() + 1, tokens.end());
                 return CommandClass::ExecuteFunc(subArguments, flags);
             }
-            return false;
+            return {false, 0};
         }
 
         constexpr static const char *command_string = CommandClass::command_string;
@@ -89,7 +89,7 @@ namespace ozz::commands {
     (HasName<Commands> && HasExecute<Commands> && HasHelpString<Commands>) && ...)
 
     struct CommandList {
-        static bool execute(int argc, char *argv[]) {
+        static CommandResult execute(int argc, char *argv[]) {
             std::vector<std::string> tokens;
             for (int i = 1; i < argc; i++) {
                 tokens.emplace_back(argv[i]);
@@ -98,14 +98,14 @@ namespace ozz::commands {
             return execute(tokens);
         }
 
-        static bool execute(const TokenListType& tokens, const FlagMapType& flags = {}) {
+        static CommandResult execute(std::vector<std::string> tokens, const std::unordered_map<std::string, std::variant<std::string, bool>>& flags = {}) {
             if (tokens.empty()) {
-                return false;
+                return {false, 0};
             }
 
             if (tokens[0] == "help") {
                 HelpFunction(0);
-                return true;
+                return {true, 0};
             }
 
             // if no flags are passed, parse them from the tokens.
@@ -120,8 +120,8 @@ namespace ozz::commands {
              */
 
             // make a copy of the tokens
-            TokenListType commandTokens = bParseFlags ? std::vector<std::string>{} : std::vector<std::string>{tokens.begin(), tokens.end()};
-            FlagMapType outFlags = bParseFlags ? std::unordered_map<std::string, std::variant<std::string, bool>>{} : flags;
+            std::vector<std::string> commandTokens = bParseFlags ? std::vector<std::string>{} : std::vector<std::string>{tokens.begin(), tokens.end()};
+            std::unordered_map<std::string, std::variant<std::string, bool>> outFlags = bParseFlags ? std::unordered_map<std::string, std::variant<std::string, bool>>{} : flags;
 
             if (bParseFlags) {
                 std::string cachedKey {};
@@ -130,8 +130,6 @@ namespace ozz::commands {
                 for (const auto& token : tokens) {
                     if (bNextTokenIsValue) {
                         outFlags[cachedKey] = token;
-                        bNextTokenIsValue = false;
-                        cachedKey.clear();
                         continue;
                     }
 
@@ -176,11 +174,11 @@ namespace ozz::commands {
 
             // separate flags from arguments
             for (const auto& result: {Commands::Execute(commandTokens, outFlags)...}) {
-                if (result) {
-                    return true;
+                if (result.first) {
+                    return result;
                 }
             }
-            return false;
+            return {false, 0};
         }
 
         static bool HelpFunction(uint16_t indent) {
